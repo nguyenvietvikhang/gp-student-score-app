@@ -3,17 +3,26 @@ import pandas as pd
 import operator, math, random
 from deap import base, creator, gp, tools, algorithms
 import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 st.set_page_config(page_title="GP Dự đoán điểm học sinh", layout="centered")
+st.markdown("""
+<style>
+    .main { background-color: #f7f7f7; }
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    .stButton button { background-color: #1f77b4; color: white; font-weight: bold; }
+    .stSlider > div > div { color: #1f77b4; }
+</style>
+""", unsafe_allow_html=True)
 
 st.title("📘 Dự đoán điểm số học sinh bằng Lập trình Di truyền")
 
 # --- Tải dữ liệu ---
-uploaded_file = st.file_uploader("Tải lên file CSV chứa dữ liệu học sinh", type=["csv"])
+uploaded_file = st.file_uploader("📂 Tải lên file CSV chứa dữ liệu học sinh (có cột 'final_score')", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.write("📊 Xem trước dữ liệu:")
+    st.subheader("📊 Xem trước dữ liệu:")
     st.dataframe(df.head())
 
     if 'final_score' not in df.columns:
@@ -60,8 +69,8 @@ if uploaded_file:
         toolbox.decorate("mutate", gp.staticLimit(key=len, max_value=20))
 
         st.subheader("⚙️ Cấu hình mô hình")
-        n_gen = st.slider("Số thế hệ", 10, 100, 40)
-        pop_size = st.slider("Số cá thể", 10, 200, 100)
+        n_gen = st.slider("📈 Số thế hệ", 10, 100, 40)
+        pop_size = st.slider("👥 Số cá thể", 10, 200, 100)
 
         if st.button("🚀 Chạy mô hình GP"):
             random.seed(42)
@@ -76,12 +85,26 @@ if uploaded_file:
             st.success("✅ Biểu thức tốt nhất tìm được:")
             st.code(str(best_expr))
 
-            st.subheader("📉 Biểu đồ tiến hóa (Loss)")
+            func = toolbox.compile(expr=best_expr)
+            try:
+                preds = [func(*row) for row in X]
+                mse = mean_squared_error(y, preds)
+                mae = mean_absolute_error(y, preds)
+                r2 = r2_score(y, preds)
+
+                st.subheader("📐 Đánh giá mô hình")
+                st.markdown(f"- **MSE**: `{mse:.4f}`")
+                st.markdown(f"- **MAE**: `{mae:.4f}`")
+                st.markdown(f"- **R² score**: `{r2:.4f}`")
+            except:
+                st.warning("⚠️ Không thể đánh giá mô hình do lỗi tính toán biểu thức.")
+
+            st.subheader("📉 Biểu đồ tiến hóa (Loss qua từng thế hệ)")
             gens = range(len(log))
             if log and all('min' in entry for entry in log):
                 losses = [entry['min'] for entry in log]
                 fig, ax = plt.subplots()
-                ax.plot(gens, losses, marker='o')
+                ax.plot(gens, losses, marker='o', color='#1f77b4')
                 ax.set_xlabel("Thế hệ")
                 ax.set_ylabel("Loss trung bình")
                 ax.set_title("Tiến hóa biểu thức")
