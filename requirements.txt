@@ -1,4 +1,5 @@
 streamlit
-deap
 pandas
+deap
 matplotlib
+scikit-learn
